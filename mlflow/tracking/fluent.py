@@ -1815,12 +1815,13 @@ def delete_experiment(experiment_id: str) -> None:
     MlflowClient().delete_experiment(experiment_id)
 
 
-def delete_run(run_id: str) -> None:
+def delete_run(run_id: str, delete_child_runs: bool = False) -> None:
     """
     Deletes a run with the given ID.
 
     Args:
         run_id: Unique identifier for the run to delete.
+        delete_child_runs: If True, also deletes associated child runs.
 
     .. code-block:: python
         :test:
@@ -1843,7 +1844,16 @@ def delete_run(run_id: str) -> None:
         run_id: 45f4af3e6fd349e58579b27fcb0b8277; lifecycle_stage: deleted
 
     """
-    MlflowClient().delete_run(run_id)
+    client = MlflowClient()
+    if delete_child_runs:
+        experiment_id = client.get_run(run_id).info.experiment_id
+        child_ids = search_runs(
+            experiment_ids=[experiment_id],
+            filter_string=f"tags.mlflow.parentRunId='{run_id}'"
+            ).run_id
+        for id in child_ids:
+            client.delete_run(id)
+    client.delete_run(run_id)
 
 
 def get_artifact_uri(artifact_path: Optional[str] = None) -> str:
